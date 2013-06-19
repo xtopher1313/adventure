@@ -17,16 +17,31 @@
 # NPCs
 # Conversation
 
-
-
+#####################################################################
+# Import
 import ast
 from random import random, randrange
 from collections import OrderedDict
+#####################################################################
 
+#####################################################################
 # Item Construction
+# Creates items and places them on the map.
+# Explanation of less obvious attributes:
+#       itemGettable means an item can be picked up (1 or 0 for true or false)
+#       itemDoable means it is usable whether is in the user's inventory or not (1 or 0 for true or false)
+#       itemLimited means it has limited number of uses, like a gun with bullets (1 or 0 for true or false)
+#       itemUses is the number of times it can be used
+#       itemRefillable means it can be re-loaded (1 or 0 for true or false)
+#       itemHidden means it is hidden and must be found with a search (1 or 0 for true or false)
+#       itemActionRequirements are inventory (has to be in user's inventory), location (item has to be used in particular location, specified by a dictionary entry
+#           like {"location":4}), eitherInventoryLocation (item can be used either from inventory, or without picking it up)
+#       itemActionTypes are unhideMap, unhideItems, message, changeStats, changeLocation.  These are the effects an item can have.
+#       itemActions are verbs specified for that item; these can be anything (shoot for a gun, use, drink for a bottle)
+#
 
 class Items:
-    def __init__(self, itemID, itemName, itemLocation, itemLocationOriginal, itemFriendlyLocation, itemLongDescription, itemShortDescription, itemLocationOriginalDesc, itemDroppedDescription, itemGettable, itemDoable, itemLimited, itemUses, itemRefillable, itemHidden, itemActions, itemActionRequirements, itemActionType, itemActionOutcomeDescSuccess, itemActionOutcomeDescFailure):
+    def __init__(self, itemID, itemName, itemLocation, itemLocationOriginal, itemFriendlyLocation, itemLongDescription, itemShortDescription, itemLocationOriginalDesc, itemDroppedDescription, itemGettable, itemDoable, itemLimited, itemUses, itemRefillable, itemHidden, itemActions, itemActionRequirements, itemActionType, itemActionUseSuccessDescription, itemActionUseFailDescription, itemActionOutcomeDescSuccess, itemActionOutcomeDescFailure):
         self.itemID = itemID
         self.itemName = itemName
         self.itemLocation = itemLocation
@@ -45,12 +60,14 @@ class Items:
         self.itemActions = itemActions
         self.itemActionRequirements = itemActionRequirements
         self.itemActionType = itemActionType
+        self.itemActionUseSuccessDescription = itemActionUseSuccessDescription
+        self.itemActionUseFailDescription = itemActionUseFailDescription
         self.itemActionOutcomeDescSuccess = itemActionOutcomeDescSuccess
         self.itemActionOutcomeDescFailure = itemActionOutcomeDescFailure
 
 def makeItems(infoStr):
-    itemID, itemName, itemLocation, itemLocationOriginal, itemFriendlyLocation, itemLongDescription, itemShortDescription, itemLocationOriginalDesc, itemDroppedDescription, itemGettable, itemDoable, itemLimited, itemUses, itemRefillable, itemHidden, itemActions, itemActionRequirements, itemActionType, itemActionOutcomeDescSuccess, itemActionOutcomeDescFailure = infoStr.split("//")
-    return Items(itemID, itemName, itemLocation, itemLocationOriginal, itemFriendlyLocation, itemLongDescription, itemShortDescription, itemLocationOriginalDesc, itemDroppedDescription, itemGettable, itemDoable, itemLimited, itemUses, itemRefillable, itemHidden, itemActions, itemActionRequirements, itemActionType, itemActionOutcomeDescSuccess, itemActionOutcomeDescFailure)
+    itemID, itemName, itemLocation, itemLocationOriginal, itemFriendlyLocation, itemLongDescription, itemShortDescription, itemLocationOriginalDesc, itemDroppedDescription, itemGettable, itemDoable, itemLimited, itemUses, itemRefillable, itemHidden, itemActions, itemActionRequirements, itemActionType, itemActionUseSuccessDescription, itemActionUseFailDescription, itemActionOutcomeDescSuccess, itemActionOutcomeDescFailure = infoStr.split("//")
+    return Items(itemID, itemName, itemLocation, itemLocationOriginal, itemFriendlyLocation, itemLongDescription, itemShortDescription, itemLocationOriginalDesc, itemDroppedDescription, itemGettable, itemDoable, itemLimited, itemUses, itemRefillable, itemHidden, itemActions, itemActionRequirements, itemActionType, itemActionUseSuccessDescription, itemActionUseFailDescription, itemActionOutcomeDescSuccess, itemActionOutcomeDescFailure)
     
 def itemsSetup():
     itemsfile = "itemsfile.txt"
@@ -65,8 +82,16 @@ def itemsSetup():
     return itemsByName, itemsByIndex
 
 # End Item Construction
+#####################################################################
 
+#####################################################################
 # Room Construction
+#
+#Explanation of less obvious attributes:
+#   exits are dictionary entries specifying the direction and what location you go to ({'w':4, 'west':4})
+#   hiddenExitable means there is a hidden exit (1 or 0 for true or false)
+#   hiddenExitFound means the hidden exit has been found or not (1 or 0 for true or false)
+
 class Rooms:
     def __init__(self, roomNumber, name, longDescription, shortDescription, exitDescription, exits, hiddenExitable, hiddenExitFound, hiddenExitFindDescription, hiddenExitDescription, hiddenExits):
         self.roomNumber = roomNumber
@@ -98,8 +123,10 @@ def roomSetup():
     return roomsByName, roomsByIndex
 
 # End of Room Construction
+#####################################################################
 
-# Random Noises Construction
+#####################################################################
+# Random Noises Construction and execution
 
 def randomNoisesSetup():
     randomNoisesfile = "randomnoisesfile.txt"
@@ -110,8 +137,18 @@ def randomNoisesSetup():
     infile.close()
     return randomNoises
 
-# End Random Noises Construction
+def randomEvents(randomNoises):
+    numNoises = len(randomNoises)
+    if random() < .1:
+        randEvent = randrange(1, numNoises)
+        print(randomNoises[randEvent])
+    else:
+        pass
 
+# End Random Noises Construction and execution
+#####################################################################
+
+#####################################################################
 # Game Play
 
 def gamePlay(roomsByName, roomsByIndex, itemsByName, itemsByIndex, verb, randomNoises):
@@ -154,7 +191,7 @@ def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsBy
         location = moveCheck(roomsByIndex, itemsByIndex, noun, location)
     elif verb in directionVerbs:
         location = moveCheck(roomsByIndex, itemsByIndex, verb, location)
-    elif verb in getVerbs:
+    elif verb in getVerbs and noun in droppedItems:
         getDropItems(itemsByName, location, "get", noun)
     elif verb in dropVerbs:
         getDropItems(itemsByName, location, "drop", noun)
@@ -167,10 +204,16 @@ def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsBy
     elif (verb in lookVerbs) and ((noun in inventory) or (noun in droppedItems)):
         print(itemsByName[noun].itemLongDescription)
     elif (noun in inventory) or (noun in droppedItems):
-        useItems(itemsByName, roomsByIndex, location, verb, noun)
+        location = useItems(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun)
     else:
         print("Huh?")
     return(location)
+
+# End Game Play
+#####################################################################
+
+#####################################################################
+# Basic movement, description, and getting and dropping items
 
 def moveCheck(roomsByIndex, itemsByIndex, action, location):
     roomExitsStr = roomsByIndex[location].exits
@@ -190,6 +233,29 @@ def moveCheck(roomsByIndex, itemsByIndex, action, location):
     else:
         print("You can't go in that direction!")
     return location
+
+# changeLocation is used for non-normal movement around the map (by magic items, technology, whatever)
+def changeLocation(location, locationSelection, locationChoices, roomsByIndex, itemsByIndex):
+    try:
+        changeLocationTo = locationChoices[locationSelection]
+        location = changeLocationTo
+        print(roomDescription(location, roomsByIndex, itemsByIndex))
+        validChoice = "true"
+        return validChoice, location
+    except:
+        validChoice = "true"
+        return validChoice, location
+
+def roomDescription(location, roomsByIndex, itemsByIndex):
+    checkHiddenExit = int(roomsByIndex[location].hiddenExitable)
+    checkHiddenExitFound = int(roomsByIndex[location].hiddenExitFound)
+    print(roomsByIndex[location].longDescription)
+    itemCheck(location, itemsByIndex, "print")
+    print(roomsByIndex[location].exitDescription)
+    if (checkHiddenExit == 1) and (checkHiddenExitFound == 1):
+        print(roomsByIndex[location].hiddenExitDescription)
+    else:
+        pass
 
 def itemCheck(location, itemsByIndex, action):
     numItems = len(itemsByIndex)
@@ -244,31 +310,20 @@ def searchCheck(roomsByIndex, itemsByIndex, noun, location):
     for n in range(numItems):
         checkLocation = int(itemsByIndex[n].itemLocation)
         checkHidden = int(itemsByIndex[n].itemHidden)
-        if (checkLocation == location) and (checkHidden == 1) and (random() < .3):
+        if (checkLocation == location) and (checkHidden == 1) and (random() < .9):
             itemsByIndex[n].itemHidden = "0"
             print("You're search has found a concealed item!")
             print(itemsByIndex[n].itemDroppedDescription)
             break
         else:
             pass
-    if (checkHiddenExit == 1) and (checkHiddenExitFound == 0) and (random() < .3):
+    if (checkHiddenExit == 1) and (checkHiddenExitFound == 0) and (random() < .9):
         roomsByIndex[location].hiddenExitFound = "1"
         FindSuccess = "true"
         print("You're search has found", roomsByIndex[location].hiddenExitFindDescription)
     elif FindSuccess == "false":
         print("Your search reveals nothing!")
     return(location)
-
-def roomDescription(location, roomsByIndex, itemsByIndex):
-    checkHiddenExit = int(roomsByIndex[location].hiddenExitable)
-    checkHiddenExitFound = int(roomsByIndex[location].hiddenExitFound)
-    print(roomsByIndex[location].longDescription)
-    itemCheck(location, itemsByIndex, "print")
-    print(roomsByIndex[location].exitDescription)
-    if (checkHiddenExit == 1) and (checkHiddenExitFound == 1):
-        print(roomsByIndex[location].hiddenExitDescription)
-    else:
-        pass
 
 def getDropItems(itemsByName, location, action, noun):
     checkLocation = int(itemsByName[noun].itemLocation)
@@ -278,29 +333,29 @@ def getDropItems(itemsByName, location, action, noun):
         if (checkLocation == location) and (checkGettable == 1) and (checkHidden == 0):
             itemsByName[noun].itemLocation = "-1"
             print
-            print("You pick up the", noun,".")
+            print("You pick up the {0}.".format(noun))
         elif (checkLocation == location) and (checkGettable == 0) and (checkHidden == 0):
             print
-            print("You can't pick up the", noun,".")
+            print("You can't pick up the {0}.".format(noun))
         else:
             print
-            print("There is no", noun, "to get!")
+            print("There is no {0} to get!".format(noun))
     elif action =="drop":
         if checkLocation == -1:
             itemsByName[noun].itemLocation = location
             print
-            print("You drop the", noun, ".")
+            print("You drop the {0}.".format(noun))
         else:
             print("You don't have the", noun, "to drop!")
     return(location)
 
+# Basic movement, description, and getting and dropping items
+#####################################################################
+
+#####################################################################
 # Use Items
 
-#roomExitsStr = roomsByIndex[location].exits
-#roomExits = ast.literal_eval(roomExitsStr)
-#location = roomExitsHidden.get(action, 'unknown')
-
-def useItems(itemsByName, roomsByIndex, location, verb, noun):
+def useItems(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun):
     checkItemActions = itemsByName[noun].itemActions
     checkLocation = itemsByName[noun].itemLocation
     checkGettable = itemsByName[noun].itemGettable
@@ -311,11 +366,11 @@ def useItems(itemsByName, roomsByIndex, location, verb, noun):
     itemReq = ast.literal_eval(itemsByName[noun].itemActionRequirements)
     # Successes
     if ("eitherInventoryLocation" in checkItemActionRequirements) and (verb in checkItemActions):
-        useItemsSuccess(itemsByName, location, verb, noun)
+        location = useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun)
     elif("inventory" in checkItemActionRequirements) and (checkLocation == "-1") and (verb in checkItemActions):
-        useItemsSuccess(itemsByName, location, verb, noun)
-    elif("notInventory" in checkItemActionRequirements) and ("location" in checkItemActionRequirements) and (location == itemReq.get("location", "unknown")):
-        useItemsSuccess(itemsByName, roomsByIndex, location, verb, noun)
+        location = useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun)
+    elif("notInventory" in checkItemActionRequirements) and ("location" in checkItemActionRequirements) and (location == itemReq.get("location", "unknown")) and (itemsByName[noun].itemLocation != "-1"):
+        location = useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun)
     # Failures
     elif ("notInventory" in checkItemActionRequirements) and (checkLocation == "-1"):
         print(itemReq.get("notInventory", "unknown"))
@@ -324,9 +379,10 @@ def useItems(itemsByName, roomsByIndex, location, verb, noun):
     elif("inventory" in checkItemActionRequirements) and (checkLocation != "-1") and (verb in checkItemActions):
         print(itemReq.get("inventory", "unknown"))
     else:
-        print("Do what with the", noun, "?")
+        print("Do what with the {0}?".format(noun))
+    return location
 
-def useItemsSuccess(itemsByName, roomsByIndex, location, verb, noun):
+def useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun):
     # Check to see if item has limited uses, and if item is re-usable.  If it's not re-usable and uses = 0, disappear the item.
     if itemsByName[noun].itemLimited == "1":
         itemUsesCheck = eval(itemsByName[noun].itemUses)
@@ -340,28 +396,64 @@ def useItemsSuccess(itemsByName, roomsByIndex, location, verb, noun):
         pass
     # Action Types are: unhideMap, unhideItems, message, changeStats, changeLocation
     checkItemActionType = itemsByName[noun].itemActionType
+    # Check to see if any of the Descriptions contain "none" - if so, do not print them.  If not, print them.  This allows for more or less description of the item and its uses,
+    #   depending on the situation and the needs of the story.
     if "message" in checkItemActionType:
-        print(itemsByName[noun].itemActionOutcomeDescSuccess)
-    if "unhideLocation" in checkItemActionType:
-        print(itemsByName[noun].itemActionOutcomeDescSuccess)
+        if itemsByName[noun].itemActionUseSuccessDescription == "none":
+            pass
+        else:
+            print(itemsByName[noun].itemActionUseSuccessDescription)
+        if (itemsByName[noun].itemActionOutcomeDescSuccess) == "none":
+            pass
+        else:
+            print(itemsByName[noun].itemActionOutcomeDescSuccess)
+    elif "unhideLocation" in checkItemActionType:
+        if itemsByName[noun].itemActionUseSuccessDescription == "none":
+            pass
+        else:
+            print(itemsByName[noun].itemActionUseSuccessDescription)
+        if (itemsByName[noun].itemActionOutcomeDescSuccess) == "none":
+            pass
+        else:
+            print(itemsByName[noun].itemActionOutcomeDescSuccess)
         roomsByIndex[location].hiddenExitFound = "1"
         print(roomsByIndex[location].hiddenExitFindDescription)
         # Update Exits description
         roomsByIndex[location].exitDescription = roomsByIndex[location].hiddenExitDescription
+    elif "changeLocation" in checkItemActionType:
+        if itemsByName[noun].itemActionUseSuccessDescription == "none":
+            pass
+        else:
+            print(itemsByName[noun].itemActionUseSuccessDescription)
+        itemActionTypeCheck = ast.literal_eval(itemsByName[noun].itemActionType)
+        locationChoices = eval(itemActionTypeCheck.get("changeLocation", "unknown"))
+        validChoice = "false"
+        while validChoice == "false":
+            print("Where do you want to go to?")
+            for n in locationChoices:
+                print(n, " - ", roomsByIndex[n].shortDescription)
+            locationSelection = eval(input("What is your selection?"))
+            locationSelection = locationSelection - 1
+            validChoice, location = changeLocation(location, locationSelection, locationChoices, roomsByIndex, itemsByIndex)
+            if validChoice == "true":
+                if (itemsByName[noun].itemActionOutcomeDescSuccess) == "none":
+                    print(itemsByName[noun].itemActionOutcomeDescSuccess)
+                else:
+                    print
+            elif validChoice == "false":
+                if (itemsByName[noun].itemActionOutcomeDescFail) == "none":
+                    pass
+                else:
+                    print(itemsByName[noun].itemActionOutcomeDescFail)
     else:
         print("Huh?")
+    return location
 
 # End Use Items
-            
-def randomEvents(randomNoises):
-    numNoises = len(randomNoises)
-    if random() < .1:
-        randEvent = randrange(1, numNoises)
-        print(randomNoises[randEvent])
-    else:
-        pass
+#####################################################################
 
-# End of Game Play
+#####################################################################
+# Main
 
 def main():
     #intro()
@@ -377,4 +469,7 @@ def main():
 
 if __name__=='__main__':
     main()
+
+# End Main
+#####################################################################
     

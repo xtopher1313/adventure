@@ -6,4 +6,4 @@
 5//Kitchen//The kitchen.//The kitchen.//There are doors to the south, and east.//{'s':3, 'south':3, 'e':6, 'east':6}//0//0//none//none//{}
 6//DiningRoom//The Dining room.//The dining room.//There are doors to the south, and west.//{'s':1, 'south':1, 'w':5, 'west':5}//0//0//none//none//{}
 7//HiddenRoom//The hidden room//The hidden room.//There is a door to the east.//{'e':2, 'east':2}//0//0//none//none//{}
-8//UpstairsHallway//The upstairs hallway//A long hallway. The carpet is stained, and faded.//You can go east along the hallway, or west back down the stairs.//{'e':9, 'east':9}//0//0//none//none//{}
+8//UpstairsHallway//The upstairs hallway//A long hallway. The carpet is stained, and faded.//You can go east along the hallway, or west back down the stairs.//{'e':9, 'east':9, 'w':4, 'west':4}//0//0//none//none//{}

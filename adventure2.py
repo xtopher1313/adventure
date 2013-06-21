@@ -126,6 +126,58 @@ def roomSetup():
 #####################################################################
 
 #####################################################################
+# NPC and Monster Construction
+# Creates NPCs and monsters and places them on the map.
+# Explanation of less obvious attributes:
+#       
+#
+
+class NPCsMonsters:
+    def __init__(self, npcmID, npcmName, npcmLocation, npcmStartingLocation, npcmFriendlyLocation, npcmLongDescription, npcmShortDescription, npcmStartingLocationDesc, npcmFightable, npcmAggression, npcmFlee, npcmAttack, npcmAttackSuccessDesc, npcmAttackFailDesc, npcmDamage, npcmArmor, npcmArmorSuccessDesc, npcmArmorFailDesc, npcmStartingHealth, npcmHealth, npcmOutlook, npcmTalkable, npcmConversation):
+        self.npcmID = npcmID
+        self.npcmName = npcmName
+        self.npcmLocation = npcmLocation
+        self.npcmStartingLocation = npcmStartingLocation
+        self.npcmFriendlyLocation = npcmFriendlyLocation
+        self.npcmLongDescription = npcmLongDescription
+        self.npcmShortDescription = npcmShortDescription
+        self.npcmStartingLocationDesc = npcmStartingLocationDesc
+        self.npcmFightable = npcmFightable
+        self.npcmAggression = npcmAggression
+        self.npcmFlee = npcmFlee
+        self.npcmAttack = npcmAttack
+        self.npcmAttackSuccessDesc = npcmAttackSuccessDesc
+        self.npcmAttackFailDesc = npcmAttackFailDesc
+        self.npcmDamage = npcmDamage
+        self.npcmArmor = npcmArmor
+        self.npcmArmorSuccessDesc = npcmArmorSuccessDesc
+        self.npcmArmorFailDesc = npcmArmorFailDesc
+        self.npcmStartingHealth = npcmStartingHealth
+        self.npcmHealth = npcmHealth
+        self.npcmOutlook = npcmOutlook
+        self.npcmTalkable = npcmTalkable
+        self.npcmConversation = npcmConversation
+
+def makeNPCsMonsters(infoStr):
+    npcmID, npcmName, npcmLocation, npcmStartingLocation, npcmFriendlyLocation, npcmLongDescription, npcmShortDescription, npcmStartingLocationDesc, npcmFightable, npcmAggression, npcmFlee, npcmAttack, npcmAttackSuccessDesc, npcmAttackFailDesc, npcmDamage, npcmArmor, npcmArmorSuccessDesc, npcmArmorFailDesc, npcmStartingHealth, npcmHealth, npcmOutlook, npcmTalkable, npcmConversation = infoStr.split("//")
+    return NPCsMonsters(npcmID, npcmName, npcmLocation, npcmStartingLocation, npcmFriendlyLocation, npcmLongDescription, npcmShortDescription, npcmStartingLocationDesc, npcmFightable, npcmAggression, npcmFlee, npcmAttack, npcmAttackSuccessDesc, npcmAttackFailDesc, npcmDamage, npcmArmor, npcmArmorSuccessDesc, npcmArmorFailDesc, npcmStartingHealth, npcmHealth, npcmOutlook, npcmTalkable, npcmConversation)
+    
+def NPCsMonstersSetup():
+    npcsmonstersfile = "npcsmonstersfile.txt"
+    infile = open(npcsmonstersfile, 'r')
+    NPCsMonstersByName = []
+    NPCsMonstersByName = OrderedDict(NPCsMonstersByName)
+    for line in infile:
+        newNPCM = makeNPCsMonsters(line)
+        NPCsMonstersByName[newNPCM.npcmName] = newNPCM
+    infile.close()
+    NPCsMonstersByIndex = list(NPCsMonstersByName.values())
+    return NPCsMonstersByName, NPCsMonstersByIndex
+
+# End NPC and Monster Construction
+#####################################################################
+
+#####################################################################
 # Random Noises Construction and execution
 
 def randomNoisesSetup():
@@ -151,12 +203,12 @@ def randomEvents(randomNoises):
 #####################################################################
 # Game Play
 
-def gamePlay(roomsByName, roomsByIndex, itemsByName, itemsByIndex, verb, randomNoises):
+def gamePlay(roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsAndMonstersByName, NPCsAndMonstersByIndex, verb, randomNoises):
     location = 0
     while not gameOver(verb):
         randomEvents(randomNoises)
         verb, noun = menuChoices2()
-        location = verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsByIndex, location)
+        location = verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsAndMonstersByName, NPCsAndMonstersByIndex, location)
 
 def gameOver(verb):
     return verb == "q"
@@ -172,7 +224,7 @@ def menuChoices2():
         noun = " "
         return verb, noun
 
-def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsByIndex, location):
+def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location):
     # Check for movements.
     # Check for built in commands: inventory, time
     # Check for gets and objects
@@ -184,13 +236,15 @@ def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsBy
     invVerbs = ["i", "inv", "inventory"]
     searchVerbs = ["search", "examine"]
     lookVerbs = ["look"]
+    talkVerbs = ["talk", "speak", "communicate", "converse"]
     pickup = ""
     inventory = inventoryCheck(itemsByIndex, "notprint")
-    droppedItems = itemCheck(location, itemsByIndex, "notprint") 
+    droppedItems = itemCheck(location, itemsByIndex, "notprint")
+    inRoomMonsters = NPCsMonstersCheck(location, NPCsMonstersByName, NPCsMonstersByIndex, "notprint")
     if verb in moveVerbs:
-        location = moveCheck(roomsByIndex, itemsByIndex, noun, location)
+        location = moveCheck(roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, noun, location)
     elif verb in directionVerbs:
-        location = moveCheck(roomsByIndex, itemsByIndex, verb, location)
+        location = moveCheck(roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, verb, location)
     elif verb in getVerbs and noun in droppedItems:
         getDropItems(itemsByName, location, "get", noun)
     elif verb in dropVerbs:
@@ -200,11 +254,11 @@ def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsBy
     elif (verb in searchVerbs) and (noun == "room"):
         searchCheck(roomsByIndex, itemsByIndex, noun, location)
     elif (verb in lookVerbs) and (noun == "room"):
-        roomDescription(location, roomsByIndex, itemsByIndex)
+        roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex)
     elif (verb in lookVerbs) and ((noun in inventory) or (noun in droppedItems)):
         print(itemsByName[noun].itemLongDescription)
     elif (noun in inventory) or (noun in droppedItems):
-        location = useItems(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun)
+        location = useItems(itemsByName, itemsByIndex, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun)
     else:
         print("Huh?")
     return(location)
@@ -215,7 +269,7 @@ def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsBy
 #####################################################################
 # Basic movement, description, and getting and dropping items
 
-def moveCheck(roomsByIndex, itemsByIndex, action, location):
+def moveCheck(roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, action, location):
     roomExitsStr = roomsByIndex[location].exits
     roomExits = ast.literal_eval(roomExitsStr)
     roomExitsHiddenStr = roomsByIndex[location].hiddenExits
@@ -224,38 +278,62 @@ def moveCheck(roomsByIndex, itemsByIndex, action, location):
         pass
     elif action in roomExits:
         location = roomExits.get(action, 'unknown')
-        roomDescription(location, roomsByIndex, itemsByIndex)
+        roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex)
         return location
     elif (action in roomExitsHidden) and (roomsByIndex[location].hiddenExitFound == "1"):
         location = roomExitsHidden.get(action, 'unknown')
-        roomDescription(location, roomsByIndex, itemsByIndex)
+        roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex)
         return location
     else:
         print("You can't go in that direction!")
     return location
 
 # changeLocation is used for non-normal movement around the map (by magic items, technology, whatever)
-def changeLocation(location, locationSelection, locationChoices, roomsByIndex, itemsByIndex):
+def changeLocation(location, locationSelection, locationChoices, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex):
     try:
         changeLocationTo = locationChoices[locationSelection]
         location = changeLocationTo
-        print(roomDescription(location, roomsByIndex, itemsByIndex))
         validChoice = "true"
         return validChoice, location
     except:
-        validChoice = "true"
+        validChoice = "false"
         return validChoice, location
 
-def roomDescription(location, roomsByIndex, itemsByIndex):
+def roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex):
     checkHiddenExit = int(roomsByIndex[location].hiddenExitable)
     checkHiddenExitFound = int(roomsByIndex[location].hiddenExitFound)
     print(roomsByIndex[location].longDescription)
     itemCheck(location, itemsByIndex, "print")
+    NPCsMonstersCheck(location, NPCsMonstersByName, NPCsMonstersByIndex, "print")
     print(roomsByIndex[location].exitDescription)
     if (checkHiddenExit == 1) and (checkHiddenExitFound == 1):
         print(roomsByIndex[location].hiddenExitDescription)
     else:
         pass
+
+def NPCsMonstersCheck(location, NPCsMonstersByName, NPCsMonstersByIndex, action):
+    numMonsters = len(NPCsMonstersByIndex)
+    inRoomMonsters = []
+    inRoomMonstersDescription = []
+    for n in range(numMonsters):
+        checkLocation = int(NPCsMonstersByIndex[n].npcmLocation)
+        checkStartingLocation = int(NPCsMonstersByIndex[n].npcmStartingLocation)
+        if (checkLocation == location) and (checkLocation != checkStartingLocation):
+            inRoomMonsters.append(NPCsMonstersByIndex[n].npcmName)
+            inRoomMonstersDescription.append(NPCsMonstersByIndex[n].npcmStartingLocationDescription)
+        elif (checkLocation == location) and (checkLocation == checkStartingLocation):
+            inRoomMonsters.append(NPCsMonstersByIndex[n].npcmName)
+            inRoomMonstersDescription.append(NPCsMonstersByIndex[n].npcmShortDescription)
+        else:
+            pass
+    numInRoomMonsters = (len(inRoomMonsters))
+    if action == "print" and (numInRoomMonsters == 0):
+        pass
+    elif action == "print" and (numInRoomMonsters > 0):
+        for n in range(numInRoomMonsters):
+            print(inRoomMonstersDescription[n])
+    else:
+        return(inRoomMonsters)
 
 def itemCheck(location, itemsByIndex, action):
     numItems = len(itemsByIndex)
@@ -349,13 +427,22 @@ def getDropItems(itemsByName, location, action, noun):
             print("You don't have the", noun, "to drop!")
     return(location)
 
-# Basic movement, description, and getting and dropping items
+# End Basic movement, description, and getting and dropping items
+#####################################################################
+
+#####################################################################
+# Converation
+
+def conversation(roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun):
+    checkLocation = int(NPCsMonstersByName[noun].npcmLocation)
+
+# End Conversation
 #####################################################################
 
 #####################################################################
 # Use Items
 
-def useItems(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun):
+def useItems(itemsByName, itemsByIndex, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun):
     checkItemActions = itemsByName[noun].itemActions
     checkLocation = itemsByName[noun].itemLocation
     checkGettable = itemsByName[noun].itemGettable
@@ -366,11 +453,11 @@ def useItems(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun):
     itemReq = ast.literal_eval(itemsByName[noun].itemActionRequirements)
     # Successes
     if ("eitherInventoryLocation" in checkItemActionRequirements) and (verb in checkItemActions):
-        location = useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun)
+        location = useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun)
     elif("inventory" in checkItemActionRequirements) and (checkLocation == "-1") and (verb in checkItemActions):
-        location = useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun)
+        location = useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun)
     elif("notInventory" in checkItemActionRequirements) and ("location" in checkItemActionRequirements) and (location == itemReq.get("location", "unknown")) and (itemsByName[noun].itemLocation != "-1"):
-        location = useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun)
+        location = useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun)
     # Failures
     elif ("notInventory" in checkItemActionRequirements) and (checkLocation == "-1"):
         print(itemReq.get("notInventory", "unknown"))
@@ -382,12 +469,12 @@ def useItems(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun):
         print("Do what with the {0}?".format(noun))
     return location
 
-def useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, location, verb, noun):
+def useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun):
     # Check to see if item has limited uses, and if item is re-usable.  If it's not re-usable and uses = 0, disappear the item.
     if itemsByName[noun].itemLimited == "1":
         itemUsesCheck = eval(itemsByName[noun].itemUses)
         itemUsesCheck = (itemUsesCheck - 1)
-        itemsByName[noun].itemUses = itemUsesCheck
+        itemsByName[noun].itemUses = str(itemUsesCheck)
         if itemUsesCheck == 0 and itemsByName[noun].itemRefillable == "0":
             itemsByName[noun].itemLocation = "-2"
         else:
@@ -432,19 +519,26 @@ def useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, location, verb, nou
             print("Where do you want to go to?")
             for n in locationChoices:
                 print(n, " - ", roomsByIndex[n].shortDescription)
-            locationSelection = eval(input("What is your selection?"))
+            locationSelection = "false"
+            while locationSelection == "false":
+                try:
+                    locationSelection = eval(input("What is your selection? "))
+                except:
+                    print("Uh, what?")
+                    locationSelection = "false"
             locationSelection = locationSelection - 1
-            validChoice, location = changeLocation(location, locationSelection, locationChoices, roomsByIndex, itemsByIndex)
+            validChoice, location = changeLocation(location, locationSelection, locationChoices, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex)
             if validChoice == "true":
                 if (itemsByName[noun].itemActionOutcomeDescSuccess) == "none":
-                    print(itemsByName[noun].itemActionOutcomeDescSuccess)
-                else:
-                    print
-            elif validChoice == "false":
-                if (itemsByName[noun].itemActionOutcomeDescFail) == "none":
                     pass
                 else:
-                    print(itemsByName[noun].itemActionOutcomeDescFail)
+                    print(itemsByName[noun].itemActionOutcomeDescSuccess)
+                roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex)
+            elif validChoice == "false":
+                if (itemsByName[noun].itemActionOutcomeDescFailure) == "none":
+                    pass
+                else:
+                    print(itemsByName[noun].itemActionOutcomeDescFailure)
     else:
         print("Huh?")
     return location
@@ -462,10 +556,11 @@ def main():
     roomsByName, roomsByIndex = roomSetup()
     itemsByName, itemsByIndex = itemsSetup()
     randomNoises = randomNoisesSetup()
+    NPCsMonstersByName, NPCsMonstersByIndex = NPCsMonstersSetup()
     location = 0
     verb = ""
-    roomDescription(location, roomsByIndex, itemsByIndex)
-    gamePlay(roomsByName, roomsByIndex, itemsByName, itemsByIndex, verb, randomNoises)
+    roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex)
+    gamePlay(roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, verb, randomNoises)
 
 if __name__=='__main__':
     main()

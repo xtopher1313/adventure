@@ -1,0 +1,1 @@
+0//rat//0//0//entryway//You see a huge rat, with fangs and a twitching tail!//You see a huge rat.//You see a huge rat!//1//.1//.9//.2//The rat sinks its fangs into you!//The rat lunges for you but misses you by inches!//3//1//none//none//4//4//{"love":0, "fear":5, "respect":0}//1//{"name":"squeek"}

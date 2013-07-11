@@ -201,14 +201,57 @@ def randomEvents(randomNoises):
 #####################################################################
 
 #####################################################################
+# User Creation and Administration
+
+class user():
+    def __init__(self, userName, userStr, userDex, userHealth, userDamage, userAttack):
+        self.userName = userName
+        self.userStr = userStr
+        self.userDex = userDex
+        self.userHealth = userHealth
+        self.userCurrentHealth = userHealth
+        self.userDamage = userDamage
+        self.userAttack = userAttack
+
+def makeUser(userName, userStr, userDex, userHealth, userDamage, userAttack):
+    return user(userName, userStr, userDex, userHealth, userDamage, userAttack)
+
+def userCreation():
+    userName = (input("What is your character's name? "))
+    userStr = rollDice()
+    userDex = rollDice()
+    userHealth = rollDice()
+    userDamage = int(userStr/3)
+    userAttack = round((userDex/18), 2)
+    userCharacter = makeUser(userName, userStr, userDex, userHealth, userDamage, userAttack)
+    return userCharacter
+
+def rollDice():
+    dieOne = randrange(1,7)
+    dieTwo = randrange(1,7)
+    diceTotal = dieOne + dieTwo + 6
+    return diceTotal
+
+def viewUser(userCharacter):
+    print("Character: ", userCharacter.userName)
+    print("Strength: ", userCharacter.userStr)
+    print("Dexterity: ", userCharacter.userDex)
+    print("Base Damage: ", userCharacter.userDamage)
+    print("Base Attack: ", userCharacter.userAttack)
+    print("Health: {0}({1})".format(userCharacter.userCurrentHealth, userCharacter.userHealth))
+
+# End User Creation
+#####################################################################
+
+#####################################################################
 # Game Play
 
-def gamePlay(roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsAndMonstersByName, NPCsAndMonstersByIndex, verb, randomNoises):
+def gamePlay(roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsAndMonstersByName, NPCsAndMonstersByIndex, verb, randomNoises, userCharacter):
     location = 0
     while not gameOver(verb):
         randomEvents(randomNoises)
         verb, noun = menuChoices2()
-        location = verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsAndMonstersByName, NPCsAndMonstersByIndex, location)
+        location = verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsAndMonstersByName, NPCsAndMonstersByIndex, location, userCharacter)
 
 def gameOver(verb):
     return verb == "q"
@@ -224,7 +267,7 @@ def menuChoices2():
         noun = " "
         return verb, noun
 
-def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location):
+def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, userCharacter):
     # Check for movements.
     # Check for built in commands: inventory, time
     # Check for gets and objects
@@ -237,7 +280,10 @@ def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsBy
     searchVerbs = ["search", "examine"]
     lookVerbs = ["look"]
     talkVerbs = ["talk", "speak", "communicate", "converse"]
+    attackVerbs = ["attack", "kick", "punch"]
+    characterVerbs = ["me", "self"]
     pickup = ""
+    weapon = ""
     inventory = inventoryCheck(itemsByIndex, "notprint")
     droppedItems = itemCheck(location, itemsByIndex, "notprint")
     inRoomMonsters = NPCsMonstersCheck(location, NPCsMonstersByName, NPCsMonstersByIndex, "notprint")
@@ -259,6 +305,12 @@ def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsBy
         print(itemsByName[noun].itemLongDescription)
     elif (noun in inventory) or (noun in droppedItems):
         location = useItems(itemsByName, itemsByIndex, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun)
+    elif (verb in talkVerbs):
+        conversation(roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun)
+    elif (verb in attackVerbs) and (noun in inRoomMonsters):
+        userCharacter.userCurrentHealth, NPCsMonstersByName[noun].npcmHealth = combat(roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun, weapon, userCharacter, "user")
+    elif (verb in characterVerbs):
+        viewUser(userCharacter)
     else:
         print("Huh?")
     return(location)
@@ -431,10 +483,77 @@ def getDropItems(itemsByName, location, action, noun):
 #####################################################################
 
 #####################################################################
+# Combat
+
+def combat(roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun, weapon, userCharacter, attacker):
+    checkLocation = int(NPCsMonstersByName[noun].npcmLocation)
+    checkFightable = int(NPCsMonstersByName[noun].npcmFightable)
+    endCombat = "false"
+    userAttack = userCharacter.userAttack
+    monsterAttack = NPCsMonstersByName[noun].npcmAttack
+    userDamage = userCharacter.userDamage
+    userHit = ""
+    monsterHit = ""
+    userCurrentHealth = int(userCharacter.userCurrentHealth)
+    monsterHealth = int(NPCsMonstersByName[noun].npcmHealth)
+    if (endCombat == "false") and (checkLocation == location) and (checkFightable == 1):
+        # User Attack
+        if attacker == "user":
+            if random() < userAttack:
+                print("Your {0} connects! The {1} reels!".format(verb, noun))
+                userHit = "true"
+            else:
+                print("Your {0} misses!".format(verb))
+        # Damage by User
+        if userHit == "true":
+            print(monsterHealth)
+            damage = randrange(1,userDamage)
+            monsterHealth = (monsterHealth - damage)
+            print(monsterHealth)
+            print("You do {0} points of damage to the {1}!".format(damage, noun))
+        else:
+            pass  
+    else:
+        print("Uh, why're you fighting with yourself?")
+    return userCurrentHealth, monsterHealth
+        
+
+# End Combat
+#####################################################################
+
+#####################################################################
 # Converation
 
 def conversation(roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun):
     checkLocation = int(NPCsMonstersByName[noun].npcmLocation)
+    checkTalkable = int(NPCsMonstersByName[noun].npcmTalkable)
+    endConversation = "false"
+    if (checkLocation == location) and (checkTalkable == 1):
+        npcmConversation = ast.literal_eval(NPCsMonstersByName[noun].npcmConversation)
+        while endConversation == "false":
+            question = input("What do you say to the {0} [Press 'q' to quit your conversation]? ".format(noun))
+            question.replace("'", "")
+            questionSplit = question.split()
+            match = "false"
+            while match == "false":
+                for word in questionSplit:
+                    if word == "q":
+                        print(npcmConversation.get("exit", "That's an odd thing to say!"))
+                        match = "true"
+                        endConversation = "true"
+                        break
+                    elif word in npcmConversation:
+                        print(npcmConversation.get(word, "That's an odd thing to say!"))
+                        match = "true"
+                        break
+                    else:
+                        pass
+                else:
+                    if match == "false":
+                        print("That's an odd thing to say!")
+                        match = "true"
+    else:
+        print("Uh, why're you talking to yourself?")
 
 # End Conversation
 #####################################################################
@@ -551,16 +670,15 @@ def useItemsSuccess(itemsByName, itemsByIndex, roomsByIndex, NPCsMonstersByName,
 
 def main():
     #intro()
-    #user()
-    #inventory()
     roomsByName, roomsByIndex = roomSetup()
     itemsByName, itemsByIndex = itemsSetup()
     randomNoises = randomNoisesSetup()
     NPCsMonstersByName, NPCsMonstersByIndex = NPCsMonstersSetup()
+    userCharacter = userCreation()
     location = 0
     verb = ""
     roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex)
-    gamePlay(roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, verb, randomNoises)
+    gamePlay(roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, verb, randomNoises, userCharacter)
 
 if __name__=='__main__':
     main()

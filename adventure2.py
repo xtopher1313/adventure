@@ -1,27 +1,66 @@
 
-#Adventure
-# get, go, inventory, look, attack, punch, kick, kill, push, open, close, read, eat, search, shoot, climb, throw, north, n, south, s, east, e, west, w, northwest, nw, northeast, ne, southwest, se, southwest, sw
-# Check if action pairs with object.  Check if location of object allows action (check inventory).  Return descript for action.  Update any properties/locations/inventories.
+#Adventure - a simple text adventure game engine.
 
-# Used items can open up the map, reveal hidden items, give messages, change stats, change location
-# Properties of Items
-# Gettable, Doable, Hidden, Actions, Action Requirements (in inventory, not in inventory, certain location, certain events complete), limited, number of uses
-# ItemActionRequirementsFailureDescription
-# Action Types: open up map (new exits), unhide items, give messages, change stats, change location
-# ActionOutcomes
-# ActionOutcomeDescriptionsSuccess
-# ActionOutcomeDescriptionUnsuccessful
+#####################################################################
+# In progress simple text adventure game engine.
+# Users create a character, explore a map, pick up items, solve puzzles, kill monsters, talk to NPCs, etc.
+# Combat and conversation are works in-progress.
+#
+# The game world is read in from several text files:
+#   Rooms on the map are described in roomsfile.txt
+#   Items are described in itemsfile.txt
+#   Random noises are described in randomnoisesfile.txt
+#
+# Current world described by roomsfile.txt, itemsfile.txt, and randomnoisesfile.txt is a simple Haunted House. There is no story line (yet).
+#####################################################################
 
-# Weapons
-# Combat
-# NPCs
-# Conversation
 
 #####################################################################
 # Import
 import ast
 from random import random, randrange
 from collections import OrderedDict
+#####################################################################
+
+#####################################################################
+# Room Construction
+#
+#Explanation of less obvious attributes:
+#   exits are dictionary entries specifying the direction and what location you go to ({'w':4, 'west':4})
+#   hiddenExitable means there is a hidden exit (1 or 0 for true or false)
+#   hiddenExitFound means the hidden exit has been found or not (1 or 0 for true or false)
+
+class Rooms:
+    def __init__(self, roomNumber, name, longDescription, shortDescription, exitDescription, exits, hiddenExitable, hiddenExitFound, hiddenExitFindDescription, hiddenExitDescription, hiddenExits):
+        self.roomNumber = roomNumber
+        self.name = name
+        self.longDescription = longDescription
+        self.shortDescription = shortDescription
+        self.exitDescription = exitDescription
+        self.exits = exits
+        self.hiddenExitable = hiddenExitable
+        self.hiddenExitFound = hiddenExitFound
+        self.hiddenExitFindDescription = hiddenExitFindDescription
+        self.hiddenExitDescription = hiddenExitDescription
+        self.hiddenExits = hiddenExits
+
+def makeRooms(infoStr):
+    roomNumber, name, longDescription, shortDescription, exitDescription, exits, hiddenExitable, hiddenExitFound, hiddenExitFindDescription, hiddenExitDescription, hiddenExits = infoStr.split("//")
+    return Rooms(roomNumber, name, longDescription, shortDescription, exitDescription, exits, hiddenExitable, hiddenExitFound, hiddenExitFindDescription, hiddenExitDescription, hiddenExits)
+    
+def roomSetup():
+    roomsfile = "roomsfile.txt"
+    infile = open(roomsfile, 'r')
+    roomsByName = []
+    roomsByName = OrderedDict(roomsByName)
+    for line in infile:
+        newRoom = makeRooms(line)
+        roomsByName[newRoom.name] = newRoom
+    infile.close()
+    roomsByIndex = list(roomsByName.values())
+    return roomsByName, roomsByIndex
+
+# End of Room Construction
 #####################################################################
 
 #####################################################################
@@ -85,47 +124,6 @@ def itemsSetup():
 #####################################################################
 
 #####################################################################
-# Room Construction
-#
-#Explanation of less obvious attributes:
-#   exits are dictionary entries specifying the direction and what location you go to ({'w':4, 'west':4})
-#   hiddenExitable means there is a hidden exit (1 or 0 for true or false)
-#   hiddenExitFound means the hidden exit has been found or not (1 or 0 for true or false)
-
-class Rooms:
-    def __init__(self, roomNumber, name, longDescription, shortDescription, exitDescription, exits, hiddenExitable, hiddenExitFound, hiddenExitFindDescription, hiddenExitDescription, hiddenExits):
-        self.roomNumber = roomNumber
-        self.name = name
-        self.longDescription = longDescription
-        self.shortDescription = shortDescription
-        self.exitDescription = exitDescription
-        self.exits = exits
-        self.hiddenExitable = hiddenExitable
-        self.hiddenExitFound = hiddenExitFound
-        self.hiddenExitFindDescription = hiddenExitFindDescription
-        self.hiddenExitDescription = hiddenExitDescription
-        self.hiddenExits = hiddenExits
-
-def makeRooms(infoStr):
-    roomNumber, name, longDescription, shortDescription, exitDescription, exits, hiddenExitable, hiddenExitFound, hiddenExitFindDescription, hiddenExitDescription, hiddenExits = infoStr.split("//")
-    return Rooms(roomNumber, name, longDescription, shortDescription, exitDescription, exits, hiddenExitable, hiddenExitFound, hiddenExitFindDescription, hiddenExitDescription, hiddenExits)
-    
-def roomSetup():
-    roomsfile = "roomsfile.txt"
-    infile = open(roomsfile, 'r')
-    roomsByName = []
-    roomsByName = OrderedDict(roomsByName)
-    for line in infile:
-        newRoom = makeRooms(line)
-        roomsByName[newRoom.name] = newRoom
-    infile.close()
-    roomsByIndex = list(roomsByName.values())
-    return roomsByName, roomsByIndex
-
-# End of Room Construction
-#####################################################################
-
-#####################################################################
 # NPC and Monster Construction
 # Creates NPCs and monsters and places them on the map.
 # Explanation of less obvious attributes:
@@ -133,7 +131,7 @@ def roomSetup():
 #
 
 class NPCsMonsters:
-    def __init__(self, npcmID, npcmName, npcmLocation, npcmStartingLocation, npcmFriendlyLocation, npcmLongDescription, npcmShortDescription, npcmStartingLocationDesc, npcmFightable, npcmAggression, npcmFlee, npcmAttack, npcmAttackSuccessDesc, npcmAttackFailDesc, npcmDamage, npcmArmor, npcmArmorSuccessDesc, npcmArmorFailDesc, npcmStartingHealth, npcmHealth, npcmOutlook, npcmTalkable, npcmConversation):
+    def __init__(self, npcmID, npcmName, npcmLocation, npcmStartingLocation, npcmFriendlyLocation, npcmLongDescription, npcmShortDescription, npcmStartingLocationDesc, npcmFightable, npcmAggression, npcmFlee, npcmAttack, npcmAttackSuccessDesc, npcmAttackFailDesc, npcmDamage, npcmArmor, npcmArmorSuccessDesc, npcmArmorFailDesc, npcmAlive, npcmHealth, npcmCurrentHealth, npcmOutlook, npcmTalkable, npcmConversation):
         self.npcmID = npcmID
         self.npcmName = npcmName
         self.npcmLocation = npcmLocation
@@ -152,15 +150,16 @@ class NPCsMonsters:
         self.npcmArmor = npcmArmor
         self.npcmArmorSuccessDesc = npcmArmorSuccessDesc
         self.npcmArmorFailDesc = npcmArmorFailDesc
-        self.npcmStartingHealth = npcmStartingHealth
+        self.npcmAlive = npcmAlive
         self.npcmHealth = npcmHealth
+        self.npcmCurrentHealth = npcmCurrentHealth
         self.npcmOutlook = npcmOutlook
         self.npcmTalkable = npcmTalkable
         self.npcmConversation = npcmConversation
 
 def makeNPCsMonsters(infoStr):
-    npcmID, npcmName, npcmLocation, npcmStartingLocation, npcmFriendlyLocation, npcmLongDescription, npcmShortDescription, npcmStartingLocationDesc, npcmFightable, npcmAggression, npcmFlee, npcmAttack, npcmAttackSuccessDesc, npcmAttackFailDesc, npcmDamage, npcmArmor, npcmArmorSuccessDesc, npcmArmorFailDesc, npcmStartingHealth, npcmHealth, npcmOutlook, npcmTalkable, npcmConversation = infoStr.split("//")
-    return NPCsMonsters(npcmID, npcmName, npcmLocation, npcmStartingLocation, npcmFriendlyLocation, npcmLongDescription, npcmShortDescription, npcmStartingLocationDesc, npcmFightable, npcmAggression, npcmFlee, npcmAttack, npcmAttackSuccessDesc, npcmAttackFailDesc, npcmDamage, npcmArmor, npcmArmorSuccessDesc, npcmArmorFailDesc, npcmStartingHealth, npcmHealth, npcmOutlook, npcmTalkable, npcmConversation)
+    npcmID, npcmName, npcmLocation, npcmStartingLocation, npcmFriendlyLocation, npcmLongDescription, npcmShortDescription, npcmStartingLocationDesc, npcmFightable, npcmAggression, npcmFlee, npcmAttack, npcmAttackSuccessDesc, npcmAttackFailDesc, npcmDamage, npcmArmor, npcmArmorSuccessDesc, npcmArmorFailDesc, npcmAlive, npcmHealth, npcmCurrentHealth, npcmOutlook, npcmTalkable, npcmConversation = infoStr.split("//")
+    return NPCsMonsters(npcmID, npcmName, npcmLocation, npcmStartingLocation, npcmFriendlyLocation, npcmLongDescription, npcmShortDescription, npcmStartingLocationDesc, npcmFightable, npcmAggression, npcmFlee, npcmAttack, npcmAttackSuccessDesc, npcmAttackFailDesc, npcmDamage, npcmArmor, npcmArmorSuccessDesc, npcmArmorFailDesc, npcmAlive, npcmHealth, npcmCurrentHealth, npcmOutlook, npcmTalkable, npcmConversation)
     
 def NPCsMonstersSetup():
     npcsmonstersfile = "npcsmonstersfile.txt"
@@ -281,38 +280,43 @@ def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsBy
     lookVerbs = ["look"]
     talkVerbs = ["talk", "speak", "communicate", "converse"]
     attackVerbs = ["attack", "kick", "punch"]
-    characterVerbs = ["me", "self"]
+    gameActions = ["me", "self", "save", "quit"]
     pickup = ""
     weapon = ""
     inventory = inventoryCheck(itemsByIndex, "notprint")
     droppedItems = itemCheck(location, itemsByIndex, "notprint")
     inRoomMonsters = NPCsMonstersCheck(location, NPCsMonstersByName, NPCsMonstersByIndex, "notprint")
-    if verb in moveVerbs:
-        location = moveCheck(roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, noun, location)
-    elif verb in directionVerbs:
-        location = moveCheck(roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, verb, location)
-    elif verb in getVerbs and noun in droppedItems:
-        getDropItems(itemsByName, location, "get", noun)
-    elif verb in dropVerbs:
-        getDropItems(itemsByName, location, "drop", noun)
-    elif verb in invVerbs:
-        inventoryCheck(itemsByIndex, "print")
-    elif (verb in searchVerbs) and (noun == "room"):
-        searchCheck(roomsByIndex, itemsByIndex, noun, location)
-    elif (verb in lookVerbs) and (noun == "room"):
-        roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex)
-    elif (verb in lookVerbs) and ((noun in inventory) or (noun in droppedItems)):
-        print(itemsByName[noun].itemLongDescription)
-    elif (noun in inventory) or (noun in droppedItems):
-        location = useItems(itemsByName, itemsByIndex, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun)
-    elif (verb in talkVerbs):
-        conversation(roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun)
-    elif (verb in attackVerbs) and (noun in inRoomMonsters):
-        userCharacter.userCurrentHealth, NPCsMonstersByName[noun].npcmHealth = combat(roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun, weapon, userCharacter, "user")
-    elif (verb in characterVerbs):
-        viewUser(userCharacter)
+    if verb in gameActions:
+        if verb == "me":
+            viewUser(userCharacter)
+        else:
+            pass
     else:
-        print("Huh?")
+        NPCsMonstersByName, userCharacter = NPCsMonstersAttackCheck(inRoomMonsters, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, weapon, userCharacter)
+        if verb in moveVerbs:
+            location = moveCheck(roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, noun, location)
+        elif verb in directionVerbs:
+            location = moveCheck(roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, verb, location)
+        elif verb in getVerbs and noun in droppedItems:
+            getDropItems(itemsByName, location, "get", noun)
+        elif verb in dropVerbs:
+            getDropItems(itemsByName, location, "drop", noun)
+        elif verb in invVerbs:
+            inventoryCheck(itemsByIndex, "print")
+        elif (verb in searchVerbs) and (noun == "room"):
+            searchCheck(roomsByIndex, itemsByIndex, noun, location)
+        elif (verb in lookVerbs) and (noun == "room"):
+            roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex)
+        elif (verb in lookVerbs) and ((noun in inventory) or (noun in droppedItems)):
+            print(itemsByName[noun].itemLongDescription)
+        elif (noun in inventory) or (noun in droppedItems):
+            location = useItems(itemsByName, itemsByIndex, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun)
+        elif (verb in talkVerbs):
+            conversation(roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun)
+        elif (verb in attackVerbs) and (noun in inRoomMonsters):
+            NPCsMonstersByName, userCharacter = userAttackCheck(location, verb, noun, weapon, NPCsMonstersByName, userCharacter, "user")
+        else:
+            print("Huh?")
     return(location)
 
 # End Game Play
@@ -411,6 +415,18 @@ def itemCheck(location, itemsByIndex, action):
             print(droppedItemsDescription[n])
     else:
         return(droppedItems)
+
+def NPCsMonstersAttackCheck(inRoomMonsters, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, weapon, userCharacter):
+    numMonsters = len(inRoomMonsters)
+    for n in range (numMonsters):
+        noun = inRoomMonsters[n]
+        monsterAggression = float(NPCsMonstersByName[noun].npcmAggression)
+        if random() < monsterAggression:
+            # Monster wants to attack
+            userCharacter.userCurrentHealth, NPCsMonstersByName[noun].npcmCurrentHealth = combat("", noun, weapon, NPCsMonstersByName, userCharacter, "monster")
+        else:
+            pass
+        #self.npcmFlee = npcmFlee
         
 def inventoryCheck(itemsByIndex, action):
     numItems = len(itemsByIndex)
@@ -485,37 +501,62 @@ def getDropItems(itemsByName, location, action, noun):
 #####################################################################
 # Combat
 
-def combat(roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun, weapon, userCharacter, attacker):
+def userAttackCheck(location, verb, noun, weapon, NPCsMonstersByName, userCharacter, attacker):
     checkLocation = int(NPCsMonstersByName[noun].npcmLocation)
     checkFightable = int(NPCsMonstersByName[noun].npcmFightable)
-    endCombat = "false"
+    checkAlive = int(NPCsMonstersByName[noun].npcmAlive)
+    userCurrentHealth = int(userCharacter.userCurrentHealth)
+    monsterCurrentHealth = int(NPCsMonstersByName[noun].npcmCurrentHealth)
+    if (checkLocation == location) and (checkFightable == 1) and (checkAlive == 1):
+        userCharacter.userCurrentHealth, NPCsMonstersByName[noun].npcmCurrentHealth = combat(verb, noun, weapon, NPCsMonstersByName, userCharacter, "user")
+    elif (checkLocation == location) and (checkFightable == 1) and (checkAlive == 0):
+        print("You {0} the dead {1}, which is kind of gross.".format(verb, noun))
+    else:
+        print("Uh, why're you fighting with yourself?")
+    return NPCsMonstersByName, userCharacter
+
+def combat(verb, noun, weapon, NPCsMonstersByName, userCharacter, attacker):
+    #checkLocation = int(NPCsMonstersByName[noun].npcmLocation)
+    #checkFightable = int(NPCsMonstersByName[noun].npcmFightable)
+    #checkAlive = int(NPCsMonstersByName[noun].npcmAlive)
+    userCurrentHealth = int(userCharacter.userCurrentHealth)
+    monsterCurrentHealth = int(NPCsMonstersByName[noun].npcmCurrentHealth)
     userAttack = userCharacter.userAttack
-    monsterAttack = NPCsMonstersByName[noun].npcmAttack
+    monsterAttack = float(NPCsMonstersByName[noun].npcmAttack)
     userDamage = userCharacter.userDamage
     userHit = ""
     monsterHit = ""
-    userCurrentHealth = int(userCharacter.userCurrentHealth)
-    monsterHealth = int(NPCsMonstersByName[noun].npcmHealth)
-    if (endCombat == "false") and (checkLocation == location) and (checkFightable == 1):
-        # User Attack
-        if attacker == "user":
-            if random() < userAttack:
-                print("Your {0} connects! The {1} reels!".format(verb, noun))
-                userHit = "true"
-            else:
-                print("Your {0} misses!".format(verb))
-        # Damage by User
-        if userHit == "true":
-            print(monsterHealth)
-            damage = randrange(1,userDamage)
-            monsterHealth = (monsterHealth - damage)
-            print(monsterHealth)
-            print("You do {0} points of damage to the {1}!".format(damage, noun))
+    # User Attack
+    if attacker == "user":
+        if random() < userAttack:
+            print("Your {0} connects! The {1} reels!".format(verb, noun))
+            userHit = "true"
         else:
-            pass  
+            print("Your {0} misses!".format(verb))
+    elif attacker == "monster":
+        if random() < monsterAttack:
+            print("The {0} hits you!".format(noun))
+        else:
+            print("The {0} misses you!".format(noun))
     else:
-        print("Uh, why're you fighting with yourself?")
-    return userCurrentHealth, monsterHealth
+        pass
+    # Damage by User
+    if userHit == "true":
+        print(monsterCurrentHealth)
+        damage = randrange(1,userDamage)
+        monsterCurrentHealth = (monsterCurrentHealth - damage)
+        NPCsMonstersByName[noun].npcmCurrentHealth = monsterCurrentHealth
+        print(monsterCurrentHealth)
+        print("You do {0} points of damage to the {1}!".format(damage, noun))
+    else:
+        pass
+        # Monster Health Check
+    if monsterCurrentHealth < 1:
+        NPCsMonstersByName[noun].npcmAlive = 0
+        print("The {0} is dead!".format(noun))
+    else:
+        pass
+    return NPCsMonstersByName, userCharacter
         
 
 # End Combat

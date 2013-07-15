@@ -245,10 +245,12 @@ def viewUser(userCharacter):
 #####################################################################
 # Game Play
 
-def gamePlay(roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsAndMonstersByName, NPCsAndMonstersByIndex, verb, randomNoises, userCharacter):
+def gamePlay(roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, verb, randomNoises, userCharacter):
     location = 0
     while not gameOver(verb):
         randomEvents(randomNoises)
+        inRoomMonsters = NPCsMonstersCheck(location, NPCsMonstersByName, NPCsMonstersByIndex, "notprint")
+        NPCsMonstersAttackCheck(inRoomMonsters, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, userCharacter)
         verb, noun = menuChoices2()
         location = verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsAndMonstersByName, NPCsAndMonstersByIndex, location, userCharacter)
 
@@ -282,7 +284,6 @@ def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsBy
     attackVerbs = ["attack", "kick", "punch"]
     gameActions = ["me", "self", "save", "quit"]
     pickup = ""
-    weapon = ""
     inventory = inventoryCheck(itemsByIndex, "notprint")
     droppedItems = itemCheck(location, itemsByIndex, "notprint")
     inRoomMonsters = NPCsMonstersCheck(location, NPCsMonstersByName, NPCsMonstersByIndex, "notprint")
@@ -292,7 +293,6 @@ def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsBy
         else:
             pass
     else:
-        NPCsMonstersByName, userCharacter = NPCsMonstersAttackCheck(inRoomMonsters, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, weapon, userCharacter)
         if verb in moveVerbs:
             location = moveCheck(roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, noun, location)
         elif verb in directionVerbs:
@@ -314,7 +314,7 @@ def verbAndNounCheck(verb, noun, roomsByName, roomsByIndex, itemsByName, itemsBy
         elif (verb in talkVerbs):
             conversation(roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, verb, noun)
         elif (verb in attackVerbs) and (noun in inRoomMonsters):
-            NPCsMonstersByName, userCharacter = userAttackCheck(location, verb, noun, weapon, NPCsMonstersByName, userCharacter, "user")
+            userCharacter.currentHealth, NPCsMonstersByName[noun].npcmCurrentHealth = userAttackCheck(location, verb, noun, NPCsMonstersByName, userCharacter, "user")
         else:
             print("Huh?")
     return(location)
@@ -334,11 +334,11 @@ def moveCheck(roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByInde
         pass
     elif action in roomExits:
         location = roomExits.get(action, 'unknown')
-        roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex)
+        roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, userCharacter)
         return location
     elif (action in roomExitsHidden) and (roomsByIndex[location].hiddenExitFound == "1"):
         location = roomExitsHidden.get(action, 'unknown')
-        roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex)
+        roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, userCharacter)
         return location
     else:
         print("You can't go in that direction!")
@@ -355,7 +355,7 @@ def changeLocation(location, locationSelection, locationChoices, roomsByIndex, i
         validChoice = "false"
         return validChoice, location
 
-def roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex):
+def roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, userCharacter):
     checkHiddenExit = int(roomsByIndex[location].hiddenExitable)
     checkHiddenExitFound = int(roomsByIndex[location].hiddenExitFound)
     print(roomsByIndex[location].longDescription)
@@ -366,6 +366,8 @@ def roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NP
         print(roomsByIndex[location].hiddenExitDescription)
     else:
         pass
+    #inRoomMonsters = NPCsMonstersCheck(location, NPCsMonstersByName, NPCsMonstersByIndex, "notprint")
+    #NPCsMonstersAttackCheck(inRoomMonsters, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, userCharacter)
 
 def NPCsMonstersCheck(location, NPCsMonstersByName, NPCsMonstersByIndex, action):
     numMonsters = len(NPCsMonstersByIndex)
@@ -391,6 +393,23 @@ def NPCsMonstersCheck(location, NPCsMonstersByName, NPCsMonstersByIndex, action)
     else:
         return(inRoomMonsters)
 
+def NPCsMonstersAttackCheck(inRoomMonsters, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, userCharacter):
+    numMonsters = len(inRoomMonsters)
+    userCurrentHealth = int(userCharacter.userCurrentHealth)
+    for n in range (numMonsters):
+        noun = inRoomMonsters[n]
+        monsterCurrentHealth = int(NPCsMonstersByName[noun].npcmCurrentHealth)
+        monsterAggression = float(NPCsMonstersByName[noun].npcmAggression)
+        monsterAttack = float(NPCsMonstersByName[noun].npcmAttack)
+        if (monsterAttack == "1") or (random() < monsterAggression):
+            # Monster wants to attack
+            NPCsMonstersByName[noun].npcmAttack = "1"
+            userCurrentHealth, monsterCurrentHealth = combat("", noun, NPCsMonstersByName, userCharacter, "monster")
+        else:
+            pass
+    return userCurrentHealth, monsterCurrentHealth
+        #self.npcmFlee = npcmFlee
+
 def itemCheck(location, itemsByIndex, action):
     numItems = len(itemsByIndex)
     droppedItems = []
@@ -415,18 +434,6 @@ def itemCheck(location, itemsByIndex, action):
             print(droppedItemsDescription[n])
     else:
         return(droppedItems)
-
-def NPCsMonstersAttackCheck(inRoomMonsters, roomsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, location, weapon, userCharacter):
-    numMonsters = len(inRoomMonsters)
-    for n in range (numMonsters):
-        noun = inRoomMonsters[n]
-        monsterAggression = float(NPCsMonstersByName[noun].npcmAggression)
-        if random() < monsterAggression:
-            # Monster wants to attack
-            userCharacter.userCurrentHealth, NPCsMonstersByName[noun].npcmCurrentHealth = combat("", noun, weapon, NPCsMonstersByName, userCharacter, "monster")
-        else:
-            pass
-        #self.npcmFlee = npcmFlee
         
 def inventoryCheck(itemsByIndex, action):
     numItems = len(itemsByIndex)
@@ -501,21 +508,21 @@ def getDropItems(itemsByName, location, action, noun):
 #####################################################################
 # Combat
 
-def userAttackCheck(location, verb, noun, weapon, NPCsMonstersByName, userCharacter, attacker):
+def userAttackCheck(location, verb, noun, NPCsMonstersByName, userCharacter, attacker):
     checkLocation = int(NPCsMonstersByName[noun].npcmLocation)
     checkFightable = int(NPCsMonstersByName[noun].npcmFightable)
     checkAlive = int(NPCsMonstersByName[noun].npcmAlive)
     userCurrentHealth = int(userCharacter.userCurrentHealth)
     monsterCurrentHealth = int(NPCsMonstersByName[noun].npcmCurrentHealth)
     if (checkLocation == location) and (checkFightable == 1) and (checkAlive == 1):
-        userCharacter.userCurrentHealth, NPCsMonstersByName[noun].npcmCurrentHealth = combat(verb, noun, weapon, NPCsMonstersByName, userCharacter, "user")
+        userCurrentHealth, monsterCurrentHealth = combat(verb, noun, NPCsMonstersByName, userCharacter, "user")
     elif (checkLocation == location) and (checkFightable == 1) and (checkAlive == 0):
         print("You {0} the dead {1}, which is kind of gross.".format(verb, noun))
     else:
         print("Uh, why're you fighting with yourself?")
-    return NPCsMonstersByName, userCharacter
+    return userCurrentHealth, monsterCurrentHealth
 
-def combat(verb, noun, weapon, NPCsMonstersByName, userCharacter, attacker):
+def combat(verb, noun, NPCsMonstersByName, userCharacter, attacker):
     #checkLocation = int(NPCsMonstersByName[noun].npcmLocation)
     #checkFightable = int(NPCsMonstersByName[noun].npcmFightable)
     #checkAlive = int(NPCsMonstersByName[noun].npcmAlive)
@@ -524,6 +531,7 @@ def combat(verb, noun, weapon, NPCsMonstersByName, userCharacter, attacker):
     userAttack = userCharacter.userAttack
     monsterAttack = float(NPCsMonstersByName[noun].npcmAttack)
     userDamage = userCharacter.userDamage
+    monsterDamage = int(NPCsMonstersByName[noun].npcmDamage)
     userHit = ""
     monsterHit = ""
     # User Attack
@@ -536,18 +544,22 @@ def combat(verb, noun, weapon, NPCsMonstersByName, userCharacter, attacker):
     elif attacker == "monster":
         if random() < monsterAttack:
             print("The {0} hits you!".format(noun))
+            monsterHit = "true"
         else:
             print("The {0} misses you!".format(noun))
     else:
         pass
     # Damage by User
     if userHit == "true":
-        print(monsterCurrentHealth)
         damage = randrange(1,userDamage)
         monsterCurrentHealth = (monsterCurrentHealth - damage)
         NPCsMonstersByName[noun].npcmCurrentHealth = monsterCurrentHealth
-        print(monsterCurrentHealth)
         print("You do {0} points of damage to the {1}!".format(damage, noun))
+    if monsterHit == "true":
+        damage = randrange(1,monsterDamage)
+        userCurrentHealth = (userCurrentHealth - damage)
+        userCharacter.userCurrentHealth = userCurrentHealth
+        print("The {0} does {1} points of damage to you!".format(noun, damage))
     else:
         pass
         # Monster Health Check
@@ -556,8 +568,7 @@ def combat(verb, noun, weapon, NPCsMonstersByName, userCharacter, attacker):
         print("The {0} is dead!".format(noun))
     else:
         pass
-    return NPCsMonstersByName, userCharacter
-        
+    return userCurrentHealth, monsterCurrentHealth
 
 # End Combat
 #####################################################################
@@ -718,7 +729,7 @@ def main():
     userCharacter = userCreation()
     location = 0
     verb = ""
-    roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex)
+    roomDescription(location, roomsByIndex, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, userCharacter)
     gamePlay(roomsByName, roomsByIndex, itemsByName, itemsByIndex, NPCsMonstersByName, NPCsMonstersByIndex, verb, randomNoises, userCharacter)
 
 if __name__=='__main__':
